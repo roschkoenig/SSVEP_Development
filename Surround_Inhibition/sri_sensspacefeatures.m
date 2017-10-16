@@ -56,10 +56,10 @@ end
 %==========================================================================
 % Sliding window fourier transform
 %--------------------------------------------------------------------------
-win     = 0.4  * Fs;    % length of window in seconds
-step    = 0.05 * Fs;    % step size in seconds
-lseg    = nsamples(M);  
-clear fdat
+% win     = 0.4  * Fs;    % length of window in seconds
+% step    = 0.05 * Fs;    % step size in seconds
+% lseg    = nsamples(M);  
+% clear fdat
 
 % Prepare the storage variable for fourier transforms (fbystep)
 %--------------------------------------------------------------------------
@@ -93,43 +93,43 @@ timesec     = time(M);
 clear ssvep conds ssvep_norm
 conds   = conditions(M);
 for e = 1:size(M,3)   
-    bldat           = M(Ozid, find(timesec < 0), :); 
-%     [blpow blfreq]  = sri_fourier(
+    bldat = M(Ozid, find(timesec < 0), :);
+    tgdat = M(Ozid, find(timesec > 0), :);
+    for o = 1:size(bldat,1)
+        [all_bl_fts(o,:,:) blfrq] = sri_fourier(squeeze(bldat(o,:,:)), Fs);
+        [all_tg_fts(o,:,:) tgfrq] = sri_fourier(squeeze(tgdat(o,:,:)), Fs);
+    end
+    blft    = squeeze(mean(all_bl_fts,1));
+    tgft    = squeeze(mean(all_tg_fts,1));
     
-%     % Get baseline average 
-%     %----------------------------------------------------------------------
-%     blid    = find(timstpsec < 0);
-%     blssvep = mean(abs(fbystep(blid,fid,e)),1);
+    Hz25    = nearest(tgfrq, 25);
+    ssvep   = tgft(Hz25, :) - mean(tgft([Hz25-1 Hz25+1], :),1);
     
-    bgpower         = mean(abs(fbystep(:,[fid - 1, fid + 2],e)), 2);
-    ssvep_norm(:,e) = (abs(fbystep(:,fid,e))) - bgpower;
-    ssvep(:,e)      = (abs(fbystep(:,fid,e)));
 end
 
-% Calculate SSVEP over the whole time window
-%--------------------------------------------------------------------------
-try
-dat     = M(Ozid, 251:750, :);  % channels * time * trials
-clear chanvep
-for d = 1:size(dat,1)
-    [pow freq] = sri_fourier(squeeze(dat(d,:,:)), Fs);
-    chanvep(d,:,:)  = pow;
-end
-long.spectrum   = squeeze(mean(chanvep,1));
-long.freq       = freq;
+% % Calculate SSVEP over the whole time window
+% %--------------------------------------------------------------------------
+% try
+% dat     = M(Ozid, 251:750, :);  % channels * time * trials
+% clear chanvep
+% for d = 1:size(dat,1)
+%     [pow freq] = sri_fourier(squeeze(dat(d,:,:)), Fs);
+%     chanvep(d,:,:)  = pow;
+% end
+% long.spectrum   = squeeze(mean(chanvep,1));
+% long.freq       = freq;
 
 count           = count + 1;
 S(s).name       = sub;
-S(s).long       = long;
+S(s).fft        = tgft; 
+S(s).frq        = tgfrq;
 S(s).ssvep      = ssvep;
-S(s).ssvep_norm = ssvep_norm;
-S(s).fourier    = abs(fbystep);
-S(s).fax        = fax;
-S(s).timesteps  = timstpsec;
 S(s).conds      = conds;
-end
+
 
 end
+
+
 
 %% Plot Spectrum by age
 %--------------------------------------------------------------------------
