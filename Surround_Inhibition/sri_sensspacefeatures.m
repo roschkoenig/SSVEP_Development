@@ -17,123 +17,77 @@ load([Fanalysis fs 'SPM' fs 'Subjectlist']);
 subs    = slist;
 
 
-%% Loop through individual subjects
+% Loop through individual subjects
 %==========================================================================
 count       = 0;
 for s = 1:length(subs)
-sub         = subs{s};  disp(['Subject ' num2str(s) ': ' sub]);
-Feeg        = [Fdata fs 'EEG' fs sub fs 'EEG' fs 'preprocessed' fs 'mat_format'];
+    sub         = subs{s};  disp(['Subject ' num2str(s) ': ' sub]);
+    Feeg        = [Fdata fs 'EEG' fs sub fs 'EEG' fs 'preprocessed' fs 'mat_format'];
 
-M           = spm_eeg_load([Fmeeg fs 'ra' sub]);
-Fs          = fsample(M); 
+    M           = spm_eeg_load([Fmeeg fs 'ra' sub]);
+    Fs          = fsample(M); 
 
-cnds        = condlist(M);
-trialcond   = conditions(M);
-lbls        = chanlabels(M);
+    cnds        = condlist(M);
+    trialcond   = conditions(M);
+    lbls        = chanlabels(M);
 
-% Define groups of channels
-%==========================================================================
-chanlabs    = chanlabels(M);
+    % Define groups of channels
+    %==========================================================================
+    chanlabs    = chanlabels(M);
 
-% Oz electrode group
-%--------------------------------------------------------------------------
-Ozchans     = {'E75', 'E71', 'E70', 'E74', 'E81', 'E82', 'E83', 'E76'};
-Ozid        = [];
-i           = 0;
+    % Oz electrode group
+    %--------------------------------------------------------------------------
+    Ozchans     = {'E75', 'E71', 'E70', 'E74', 'E81', 'E82', 'E83', 'E76'};
+    Ozid        = [];
+    i           = 0;
 
-for o = 1:length(Ozchans)
-    thischan    = Ozchans(o);
-    chanid      = find(strcmp(chanlabs, thischan));
-    if ~isempty(chanid)
-    if [isempty(badchannels(M)) | isempty(find(badchannels(M) == chanid))] 
-        i       = i + 1;
-        Ozid(i) = chanid;
+    for o = 1:length(Ozchans)
+        thischan    = Ozchans(o);
+        chanid      = find(strcmp(chanlabs, thischan));
+        if ~isempty(chanid)
+        if [isempty(badchannels(M)) | isempty(find(badchannels(M) == chanid))] 
+            i       = i + 1;
+            Ozid(i) = chanid;
+        end
+        end
     end
+
+    if ~isempty(Ozid)
+        
+        % Extract SSVEP measures
+        %==========================================================================
+        % For each (selection) event, select the appropriate SSVEP freq
+        clear ssvep conds ssvep_norm all_bl_fts all_tg_fts 
+        timesec     = time(M);
+        conds       = conditions(M);
+        
+        for e = 1:size(M,3)   
+            bldat = M(Ozid, find(timesec < 0), :);
+            tgdat = M(Ozid, find(timesec > 0), :);
+            for o = 1:size(bldat,1)
+                [all_bl_fts(o,:,:) blfrq] = sri_fourier(squeeze(bldat(o,:,:)), Fs);
+                [all_tg_fts(o,:,:) tgfrq] = sri_fourier(squeeze(tgdat(o,:,:)), Fs);
+            end
+            blft    = squeeze(mean(all_bl_fts,1));
+            tgft    = squeeze(mean(all_tg_fts,1));
+
+            Hz25    = nearest(tgfrq, 25);
+            ssvep   = tgft(Hz25, :) - mean(tgft([Hz25-1 Hz25+1], :),1);
+        end
+
+        count           = count + 1;
+        S(count).name       = sub;
+        S(count).fft        = tgft; 
+        S(count).frq        = tgfrq;
+        S(count).ssvep      = ssvep;
+        S(count).conds      = conds;
+
     end
-end
-
-% Estimating SSVEP from Oz electrode group
-%==========================================================================
-% Sliding window fourier transform
-%--------------------------------------------------------------------------
-% win     = 0.4  * Fs;    % length of window in seconds
-% step    = 0.05 * Fs;    % step size in seconds
-% lseg    = nsamples(M);  
-% clear fdat
-
-% Prepare the storage variable for fourier transforms (fbystep)
-%--------------------------------------------------------------------------
-% i           = 0;
-% lfinal      = length(1:step:(lseg-win));
-% [pow fax]   = sri_fourier(rand(win,1), Fs);
-
-% Prepare the timeaxis associated with sliding window (timstpsec)
-%--------------------------------------------------------------------------
-timesec     = time(M);
-% timstpsec   = linspace(timesec(1) + 0.5*win/Fs, timesec(end) - 0.5*win/Fs, lfinal);
-
-% % Sliding window estimator
-% %--------------------------------------------------------------------------
-% for ww = 1 : step : (lseg-win)
-%     i = i + 1;
-%     thiswin         = ww: ww+win - 1;
-%     dat             = M(Ozid,thiswin,:);                                    % channels * time * trials
-%     clear allfdat
-%     for di = 1:size(dat,3)
-%         d = squeeze(dat(:,:,di));
-%         [fdat]          = sri_fourier(d', Fs);                              % freq * channels
-%         allfdat(:,:,di) = fdat';                                            % channels * freq * trials
-%     end
-%     fbystep(i,:,:)  = mean(allfdat,1);                                      % average over channels
-% end
-
-% Extract SSVEP measures
-%==========================================================================
-% For each (selection) event, select the appropriate SSVEP freq
-clear ssvep conds ssvep_norm
-conds   = conditions(M);
-for e = 1:size(M,3)   
-    bldat = M(Ozid, find(timesec < 0), :);
-    tgdat = M(Ozid, find(timesec > 0), :);
-    for o = 1:size(bldat,1)
-        [all_bl_fts(o,:,:) blfrq] = sri_fourier(squeeze(bldat(o,:,:)), Fs);
-        [all_tg_fts(o,:,:) tgfrq] = sri_fourier(squeeze(tgdat(o,:,:)), Fs);
-    end
-    blft    = squeeze(mean(all_bl_fts,1));
-    tgft    = squeeze(mean(all_tg_fts,1));
-    
-    Hz25    = nearest(tgfrq, 25);
-    ssvep   = tgft(Hz25, :) - mean(tgft([Hz25-1 Hz25+1], :),1);
-    
-end
-
-% % Calculate SSVEP over the whole time window
-% %--------------------------------------------------------------------------
-% try
-% dat     = M(Ozid, 251:750, :);  % channels * time * trials
-% clear chanvep
-% for d = 1:size(dat,1)
-%     [pow freq] = sri_fourier(squeeze(dat(d,:,:)), Fs);
-%     chanvep(d,:,:)  = pow;
-% end
-% long.spectrum   = squeeze(mean(chanvep,1));
-% long.freq       = freq;
-
-count           = count + 1;
-S(s).name       = sub;
-S(s).fft        = tgft; 
-S(s).frq        = tgfrq;
-S(s).ssvep      = ssvep;
-S(s).conds      = conds;
-
 
 end
 
-
-
-%% Plot Spectrum by age
+% Plot Spectrum by age
 %--------------------------------------------------------------------------
-
 % Extract age information
 %--------------------------------------------------------------------------
 pheno   = csv2cell([Fdata fs 'MIPDB' fs 'MIPDB_PublicFile.csv'], 'fromfile');
@@ -151,7 +105,7 @@ subcells = pheno(2:end, subc);
 diagnosis = pheno(2:end, subc);
 
 
-% Extract individual trials and corresponding ages
+%% Extract individual trials and corresponding ages
 %--------------------------------------------------------------------------
 clear shortspec agelist ssvep
 count = 0;
@@ -162,26 +116,31 @@ for s = 1:length(S)
     age(s)  = ages(subi);
     dx(s)   = diagnosis{subi};
     
-    for si = 1:size(S(s).long.spectrum, 2)
+    for si = 1:size(S(s).fft, 2)
         if strcmp(S(s).conds{si}, 'F3B0')
-            fax  = S(s).long.freq;
+            fax  = S(s).frq;
             Hz25 = nearest(fax, 25);
-            faxi = intersect(find(S(s).long.freq > 1), find(S(s).long.freq < 40));
+            faxi = intersect(find(fax > 1), find(fax < 40));
             
             count = count + 1;
-            shortspec(count,:)  = S(s).long.spectrum(faxi, si);
+            shortspec(count,:)  = S(s).fft(faxi, si);
+            
+%             plot(S(s).fft(:, si)); hold on
+%             title(sub);
+%             if rem(count,10) == 0; pause; hold off; end
+            
             agelist(count)      = age(s);
-            ssvep(count)        = S(s).long.spectrum(Hz25, si) - S(s).long.spectrum(Hz25-1, si);
+            ssvep(count)        = S(s).fft(Hz25, si) - S(s).fft(Hz25-1, si);
         end
     end
 end
 
-% Sort extracted spectra
+%% Sort extracted spectra
 %--------------------------------------------------------------------------
 [sorted sorting] = sort(agelist);
 sortedspec          = shortspec(sorting,:);
 
-win     = 40;
+win     = 10;
 step    = 1;
 
 count = 0; 
@@ -191,8 +150,6 @@ for i = 1:1:(size(sortedspec,1)-win)
     smoothspec(count,:) = mean(sortedspec(i:i+win, :), 1);
 end
 
-
-%%
 cols = flip(cbrewer('div', 'Spectral', size(smoothspec,1)));
 for s = 1:size(smoothspec,1)
     plot(fax(faxi), smoothspec(s,:), 'color', cols(s,:)); hold on

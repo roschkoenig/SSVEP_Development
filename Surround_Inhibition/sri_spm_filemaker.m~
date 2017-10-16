@@ -23,7 +23,7 @@ subs    = cellstr(spm_select('List', [Fdata fs EEGpath], 'dir', '^A'));
 clear alldat 
 i = 0;
 
-for sb = 22:length(subs)
+for sb = 11 %:length(subs)
 
     disp(['Subject: ' num2str(sb)])
     sub         = subs{sb};
@@ -54,10 +54,10 @@ for sb = 22:length(subs)
         % Make MEEG File
         %==================================================================
         targettrg = [93 97];    behvnames = {'SurroundSupp_Block1'; 'SurroundSupp_Block2'};
+
         behvfiles   = cellstr(spm_select('FPList', Fpre, '^*\.mat$'));
-        allcount    = 0;
-        
-        if length(behvfiles) == 2
+        allcount    = 1;
+
         for t = 1:length(targettrg) 
 
             % Identify the correct  file to load
@@ -71,19 +71,18 @@ for sb = 22:length(subs)
             
             % Identify the right datafile to match the behavioural files
             %--------------------------------------------------------------
-            clear eventid 
-            shouldIload = 0;
+            clear eventid
             
             for tt = 1:length(tid)
                 
                 load(datafiles{tid(tt)}, 'EEG');    D = EEG;    clear EEG;
-                for e = 1:length(D.event)
+                for e = 1:length(D.event(e).type);
                     eventid(e) = str2double(D.event(e).type);
                 end
                 
                 % Check we have the right number of onset times
                 %----------------------------------------------------------
-                if length(find(eventid == 8)) ~= length(B.TargOnT)
+                if length(find(eventid == 4)) ~= length(B.TargOnT)
                     shouldIload(tt) = 0;
                 else 
                     shouldIload(tt) = 1;
@@ -94,8 +93,8 @@ for sb = 22:length(subs)
             end     % Looping through multiple identical triggers
             
             if sum(shouldIload) == 1
-                disp('Found a matching datafile');
-                load(datafiles{tid(find(shouldIload))}, 'EEG');    D = EEG;    clear EEG;
+                
+                load(datafiles{tid(end)}, 'EEG');    D = EEG;    clear EEG;
 
                 Fs      = D.srate;                                              % Sampling frequency
                 prew    = 0.5;                                                  % prestimulus window in seconds
@@ -130,27 +129,18 @@ for sb = 22:length(subs)
                     start = e.onsmpl - (prew * Fs);
                     stop  = e.onsmpl + win * Fs - 1;
 
-                    allcount                = allcount + 1;
                     ftdata.trial{allcount}  = D.data(:, start:stop);
                     ftdata.time{allcount}   = linspace(-prew, win - 1/Fs, length(ftdata.trial{allcount})); 
                     cond{allcount}          = [E(o).fg E(o).bg];
-                    
+                    allcount                = allcount + 1;
                 end
-                
-            end     % Condition that only 1 datafiles matches behaviour
-        end     % Loop through different triggers
-        end     % Check that there are some behavioural files
-        
-        if allcount == 0
-            disp(['Subject ' num2str(sb) ' (' sub ') does not have any data']);
-        else
-            i = i+1;
-            alldat(i,:) = ftdata.trial{1}(1,:);
-        end 
+                end
 
-            
+                i = i+1;
+                alldat(i,:) = ftdata.trial{1}(1,:);
 
-                
+
+
     %         ftdata.label    = {D.chanlocs.labels};
     %         fname           = [Fmeeg fs sub '.mat'];
     % 
