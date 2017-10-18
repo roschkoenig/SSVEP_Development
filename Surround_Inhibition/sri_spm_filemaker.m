@@ -23,7 +23,7 @@ subs    = cellstr(spm_select('List', [Fdata fs EEGpath], 'dir', '^A'));
 clear alldat 
 i = 0;
 
-for sb = 22:length(subs)
+for sb = 1:length(subs)
 
     disp(['Subject: ' num2str(sb)])
     sub         = subs{sb};
@@ -97,6 +97,7 @@ for sb = 22:length(subs)
                 disp('Found a matching datafile');
                 load(datafiles{tid(find(shouldIload))}, 'EEG');    D = EEG;    clear EEG;
 
+                locs    = {D.chanlocs.labels};
                 Fs      = D.srate;                                              % Sampling frequency
                 prew    = 0.5;                                                  % prestimulus window in seconds
                 win     = 2.4;                                                  % total length of window of interest in seconds
@@ -143,87 +144,84 @@ for sb = 22:length(subs)
         
         if allcount == 0
             disp(['Subject ' num2str(sb) ' (' sub ') does not have any data']);
+            
         else
             i = i+1;
             alldat(i,:) = ftdata.trial{1}(1,:);
-        end 
-
             
-
-                
-    %         ftdata.label    = {D.chanlocs.labels};
-    %         fname           = [Fmeeg fs sub '.mat'];
-    % 
-    % 
-    %         % Rereference to average reference
-    %         %------------------------------------------------------------------
-    %         for t = 1:length(ftdata.trial)
-    %             ftdata.trial{t} = ft_preproc_rereference(ftdata.trial{t});
-    %         end
-    % 
-    %         % Generate MEEG object
-    %         %--------------------------------------------------------------------------
-    %         M = spm_eeg_ft2spm(ftdata, fname);
-    %         M = type(M, 'single'); 
-    % 
-    %         for c = 1:length(cond)
-    %             M = conditions(M, c, cond{c});
-    %         end
-    %         save(M)
-    % 
-    %         % Load EEG sensor locations and project to scalp maps
-    %         %------------------------------------------------------------------
-    %         S           = [];
-    %         S.task      = 'loadeegsens';
-    %         S.source    = 'locfile';
-    %         S.sensfile  = [Fdata fs EEGpath fs 'GSN_HydroCel_129.sfp'];
-    %         S.D         = M;
-    %         M           = spm_eeg_prep(S);
-    %         save(M);
-    % 
-    %         S           = [];
-    %         S.task      = 'project3D';
-    %         S.modality  = 'EEG';
-    %         S.D         = M;
-    %         M           = spm_eeg_prep(S);
-    %         save(M);
-    % 
-    %         % Compute leadfields in preparation for model inversion
-    %         %======================================================================
-    %         clear job
-    %         job{1}.spm.meeg.source.headmodel.D = {fname};
-    %         job{1}.spm.meeg.source.headmodel.val = 1;
-    %         job{1}.spm.meeg.source.headmodel.comment = '';
-    %         job{1}.spm.meeg.source.headmodel.meshing.meshes.template = 1;
-    %         job{1}.spm.meeg.source.headmodel.meshing.meshres = 3;
-    %         job{1}.spm.meeg.source.headmodel.coregistration.coregspecify.fiducial(1).fidname = 'FidNz';
-    %         job{1}.spm.meeg.source.headmodel.coregistration.coregspecify.fiducial(1).specification.select = 'nas';
-    %         job{1}.spm.meeg.source.headmodel.coregistration.coregspecify.fiducial(2).fidname = 'FidT9';
-    %         job{1}.spm.meeg.source.headmodel.coregistration.coregspecify.fiducial(2).specification.select = 'lpa';
-    %         job{1}.spm.meeg.source.headmodel.coregistration.coregspecify.fiducial(3).fidname = 'FidT10';
-    %         job{1}.spm.meeg.source.headmodel.coregistration.coregspecify.fiducial(3).specification.select = 'rpa';
-    %         job{1}.spm.meeg.source.headmodel.coregistration.coregspecify.useheadshape = 0;
-    %         job{1}.spm.meeg.source.headmodel.forward.eeg = 'EEG BEM';
-    %         job{1}.spm.meeg.source.headmodel.forward.meg = 'Single Shell';
-    %         spm_jobman('run', job);
-    %         clear job
-    % 
-    %         M = spm_eeg_inv_forward(fname);
-    %         save(M)
-    % 
-    %         job{1}.spm.meeg.preproc.artefact.D = {fname};
-    %         job{1}.spm.meeg.preproc.artefact.mode = 'reject';
-    %         job{1}.spm.meeg.preproc.artefact.badchanthresh = 0.2;
-    %         job{1}.spm.meeg.preproc.artefact.append = true;
-    %         job{1}.spm.meeg.preproc.artefact.methods.channels{1}.all = 'all';
-    %         job{1}.spm.meeg.preproc.artefact.methods.fun.peak2peak.threshold = 150;
-    %         job{1}.spm.meeg.preproc.artefact.prefix = 'a';
-    % 
-    %         job{2}.spm.meeg.preproc.remove.D = {[Fmeeg fs 'a' sub '.mat'];};
-    %         job{2}.spm.meeg.preproc.remove.prefix = 'r';
-    % 
-    %         spm_jobman('run', job);
-    %         clear job
+            ftdata.label    = locs;
+            fname           = [Fmeeg fs sub '.mat'];           
+    
+            % Rereference to average reference
+            %------------------------------------------------------------------
+            for t = 1:length(ftdata.trial)
+                ftdata.trial{t} = ft_preproc_rereference(ftdata.trial{t});
+            end
+    
+            % Generate MEEG object
+            %--------------------------------------------------------------------------
+            M = spm_eeg_ft2spm(ftdata, fname);
+            M = type(M, 'single'); 
+    
+            for c = 1:length(cond)
+                M = conditions(M, c, cond{c});
+            end
+            save(M)
+    
+            % Load EEG sensor locations and project to scalp maps
+            %------------------------------------------------------------------
+            S           = [];
+            S.task      = 'loadeegsens';
+            S.source    = 'locfile';
+            S.sensfile  = [Fdata fs EEGpath fs 'GSN_HydroCel_129.sfp'];
+            S.D         = M;
+            M           = spm_eeg_prep(S);
+            save(M);
+    
+            S           = [];
+            S.task      = 'project3D';
+            S.modality  = 'EEG';
+            S.D         = M;
+            M           = spm_eeg_prep(S);
+            save(M);
+    
+            % Compute leadfields in preparation for model inversion
+            %======================================================================
+            clear job
+            job{1}.spm.meeg.source.headmodel.D = {fname};
+            job{1}.spm.meeg.source.headmodel.val = 1;
+            job{1}.spm.meeg.source.headmodel.comment = '';
+            job{1}.spm.meeg.source.headmodel.meshing.meshes.template = 1;
+            job{1}.spm.meeg.source.headmodel.meshing.meshres = 3;
+            job{1}.spm.meeg.source.headmodel.coregistration.coregspecify.fiducial(1).fidname = 'FidNz';
+            job{1}.spm.meeg.source.headmodel.coregistration.coregspecify.fiducial(1).specification.select = 'nas';
+            job{1}.spm.meeg.source.headmodel.coregistration.coregspecify.fiducial(2).fidname = 'FidT9';
+            job{1}.spm.meeg.source.headmodel.coregistration.coregspecify.fiducial(2).specification.select = 'lpa';
+            job{1}.spm.meeg.source.headmodel.coregistration.coregspecify.fiducial(3).fidname = 'FidT10';
+            job{1}.spm.meeg.source.headmodel.coregistration.coregspecify.fiducial(3).specification.select = 'rpa';
+            job{1}.spm.meeg.source.headmodel.coregistration.coregspecify.useheadshape = 0;
+            job{1}.spm.meeg.source.headmodel.forward.eeg = 'EEG BEM';
+            job{1}.spm.meeg.source.headmodel.forward.meg = 'Single Shell';
+            spm_jobman('run', job);
+            clear job
+    
+            M = spm_eeg_inv_forward(fname);
+            save(M)
+    
+            job{1}.spm.meeg.preproc.artefact.D = {fname};
+            job{1}.spm.meeg.preproc.artefact.mode = 'reject';
+            job{1}.spm.meeg.preproc.artefact.badchanthresh = 0.2;
+            job{1}.spm.meeg.preproc.artefact.append = true;
+            job{1}.spm.meeg.preproc.artefact.methods.channels{1}.all = 'all';
+            job{1}.spm.meeg.preproc.artefact.methods.fun.peak2peak.threshold = 150;
+            job{1}.spm.meeg.preproc.artefact.prefix = 'a';
+    
+            job{2}.spm.meeg.preproc.remove.D = {[Fmeeg fs 'a' sub '.mat'];};
+            job{2}.spm.meeg.preproc.remove.prefix = 'r';
+    
+            spm_jobman('run', job);
+            clear job
         end
+    end     % if condition checking whether there are any data
 end
 

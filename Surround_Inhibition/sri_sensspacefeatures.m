@@ -140,7 +140,7 @@ end
 [sorted sorting] = sort(agelist);
 sortedspec          = shortspec(sorting,:);
 
-win     = 10;
+win     = 60;
 step    = 1;
 
 count = 0; 
@@ -150,10 +150,16 @@ for i = 1:1:(size(sortedspec,1)-win)
     smoothspec(count,:) = mean(sortedspec(i:i+win, :), 1);
 end
 
+subplot(2,1,1)
 cols = flip(cbrewer('div', 'Spectral', size(smoothspec,1)));
 for s = 1:size(smoothspec,1)
     plot(fax(faxi), smoothspec(s,:), 'color', cols(s,:)); hold on
 end
+
+colormap(cols)
+subplot(2,1,2)
+imagesc(log(smoothspec))
+
 
 %%
 

@@ -78,7 +78,7 @@ for m = 1:length(mtfs)
         job{1}.spm.meeg.images.convert2images.mode = 'scalp x frequency'; 
         job{1}.spm.meeg.images.convert2images.channels{1}.all = 'all';
         job{1}.spm.meeg.images.convert2images.timewin = [-Inf Inf];
-        job{1}.spm.meeg.images.convert2images.freqwin = [24 26]; 
+        job{1}.spm.meeg.images.convert2images.freqwin = [1 30]; 
         job{1}.spm.meeg.images.convert2images.prefix = '';
         spm_jobman('run', job);
     catch 
@@ -107,7 +107,7 @@ for d = 1:length(dirs)
 end
 
 
-%%` Second level - effects of experimental condition
+%% Second level - effects of experimental condition
 %==========================================================================
 % Subject specific folders containing smoothed, mean images
 %--------------------------------------------------------------------------
@@ -201,6 +201,13 @@ job{1}.spm.stats.factorial_design.cov(5).c      = bgage;
 job{1}.spm.stats.factorial_design.cov(5).cname  = 'Age x Background';
 job{1}.spm.stats.factorial_design.cov(5).iCFI   = 1;
 job{1}.spm.stats.factorial_design.cov(5).iCC    = 1;
+
+fgbg  = fgcond .* bgcond;
+job{1}.spm.stats.factorial_design.cov(5).c      = fgbg;
+job{1}.spm.stats.factorial_design.cov(5).cname  = 'Foreground x Background';
+job{1}.spm.stats.factorial_design.cov(5).iCFI   = 1;
+job{1}.spm.stats.factorial_design.cov(5).iCC    = 1;
+
 
 job{1}.spm.stats.factorial_design.multi_cov = struct('files', {}, 'iCFI', {}, 'iCC', {});
 job{1}.spm.stats.factorial_design.masking.tm.tm_none = 1;
